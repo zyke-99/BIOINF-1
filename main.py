@@ -105,6 +105,8 @@ def calculate_codon_distances(list_of_tuples_of_file_codon_freq_dicodon_freq):
             for tuple_codon in tuple[1]:
                 for other_tuple_codon in other_tuple[1]:
                     if tuple_codon[0] == other_tuple_codon[0]:
+                        if(tuple_codon[1]/other_tuple_codon[1] >= 5):
+                            print(tuple[0] + '   ' + other_tuple[0] + '   ' + str(tuple_codon[0]))
                         sum = sum + abs(tuple_codon[1] - other_tuple_codon[1])
             result_string = result_string + str(sum) + ' '
         result_string = result_string + '\n'
