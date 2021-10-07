@@ -21,7 +21,7 @@ def split_by_triplets(string_seq):
 
 def split_by_six(string_seq):
     six = [string_seq[i:i+6] for i in range(0, len(string_seq), 6)]
-    if len(six[-1]) < 6:
+    if len(six) > 0 and len(six[-1]) < 6:
         six.pop()
     return six
 
@@ -84,6 +84,20 @@ def find_codon_freq(str_seq_all_protein_coding_frames_concat):
     return usage_list
 
 
+def find_dicodon_freq(all_protein_coding_frames):
+    dicodon_list = []
+    usage_list = []
+    for frame in all_protein_coding_frames:
+        dicodons = split_by_six(''.join(frame))
+        dicodons.extend(split_by_six(''.join(frame[1:])))
+        if len(dicodons) > 0:
+            dicodon_list.extend(dicodons)
+    all_dicodons = [(i+j) for i in ALL_CODONS for j in ALL_CODONS]
+    for dicodon in all_dicodons:
+        usage_list.append((dicodon, dicodon_list.count(dicodon)/len(dicodon_list)))
+    return usage_list
+
+
 def get_frames(seq):
     f1 = seq[0:]
     f2 = seq[1:]
@@ -95,7 +109,7 @@ def get_frames(seq):
     return all_frames
 
 
-def calculate_codon_distances(list_of_tuples_of_file_codon_freq_dicodon_freq):
+def calculate_distances(list_of_tuples_of_file_codon_freq_dicodon_freq):
     phylip_number = len(list_of_tuples_of_file_codon_freq_dicodon_freq)
     result_string = str(phylip_number) + '\n'
     for tuple in list_of_tuples_of_file_codon_freq_dicodon_freq:
@@ -105,12 +119,26 @@ def calculate_codon_distances(list_of_tuples_of_file_codon_freq_dicodon_freq):
             for tuple_codon in tuple[1]:
                 for other_tuple_codon in other_tuple[1]:
                     if tuple_codon[0] == other_tuple_codon[0]:
-                        if(tuple_codon[1]/other_tuple_codon[1] >= 5):
+                        if tuple_codon[1]/other_tuple_codon[1] >= 5:
                             print(tuple[0] + '   ' + other_tuple[0] + '   ' + str(tuple_codon[0]))
                         sum = sum + abs(tuple_codon[1] - other_tuple_codon[1])
             result_string = result_string + str(sum) + ' '
         result_string = result_string + '\n'
-        with open('results.txt', 'w') as f:
+        with open('results_with_codon_usage.txt', 'w') as f:
+            f.write(result_string)
+            f.write('\n')
+    result_string = str(phylip_number) + '\n'
+    for tuple in list_of_tuples_of_file_codon_freq_dicodon_freq:
+        result_string = result_string + tuple[0] + ' '
+        for other_tuple in list_of_tuples_of_file_codon_freq_dicodon_freq:
+            sum = 0
+            for tuple_dicodon in tuple[2]:
+                for other_tuple_dicodon in other_tuple[2]:
+                    if tuple_dicodon[0] == other_tuple_dicodon[0]:
+                        sum = sum + abs(tuple_dicodon[1] - other_tuple_dicodon[1])
+            result_string = result_string + str(sum) + ' '
+        result_string = result_string + '\n'
+        with open('results_with_dicodon_usage.txt', 'w') as f:
             f.write(result_string)
             f.write('\n')
 
@@ -130,8 +158,7 @@ def execute(file):
         protein_coding_frames.extend(get_protein_coding_frames(frame))
         longest_stop_start_frames.extend(find_stop_start_sequences(frame))
     filtered_protein_coding_frames = filter_protein_coding_frames_larger_than(protein_coding_frames)
-    codon_freq = find_codon_freq(str_seq)
-    p = (file, codon_freq)
+    codon_freq = find_codon_freq(''.join(util_flatten_list_of_lists(protein_coding_frames)))
     with open(file + '_res.txt', 'w') as f:
         f.write('PROTEIN CODING FRAMES:\n')
         for pcf in protein_coding_frames:
@@ -144,6 +171,8 @@ def execute(file):
         f.write('FILTERED PROTEIN CODING FRAMES LONGER THAN ' + str(MIN_BP_SIZE) + '\n')
         for fpcf in filtered_protein_coding_frames:
             f.write(str(fpcf) + '\n')
+    dicodon_freq = find_dicodon_freq(protein_coding_frames)
+    p = (file, codon_freq, dicodon_freq)
     return p
 
 
@@ -156,5 +185,5 @@ if __name__ == '__main__':
     m2 = execute("mamalian2")
     m3 = execute("mamalian3")
     m4 = execute("mamalian4")
-    calculate_codon_distances([b1, b2, b3, b4, m1, m2, m3, m4])
+    calculate_distances([b1, b2, b3, b4, m1, m2, m3, m4])
     print('COMPLETE')
